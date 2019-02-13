@@ -692,6 +692,9 @@ static CDVUIInAppBrowser* instance = nil;
     fixedSpaceButton.width = 20;
 
     float toolbarY = toolbarIsAtBottom ? self.view.bounds.size.height - TOOLBAR_HEIGHT : 0.0;
+    if ([self isFrameless]) {
+        toolbarY = toolbarIsAtBottom ? self.view.bounds.size.height - TOOLBAR_HEIGHT - SAFE_AREA_INSERTS: 0.0;
+    }
     CGRect toolbarFrame = CGRectMake(0.0, toolbarY, self.view.bounds.size.width, TOOLBAR_HEIGHT);
 
     self.toolbar = [[UIToolbar alloc] initWithFrame:toolbarFrame];
@@ -772,6 +775,13 @@ static CDVUIInAppBrowser* instance = nil;
     [self.view addSubview:self.toolbar];
     [self.view addSubview:self.addressLabel];
     [self.view addSubview:self.spinner];
+}
+
+- (BOOL)isFrameless {
+    if (@available(iOS 11.0, *)) {
+        return [[[UIApplication sharedApplication] delegate] window].safeAreaInsets.top > 20.0;
+    }
+    return  NO;
 }
 
 - (void) setWebViewFrame : (CGRect) frame {
