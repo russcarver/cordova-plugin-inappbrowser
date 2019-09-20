@@ -36,15 +36,12 @@
 #define    IAB_BRIDGE_NAME @"cordova_iab"
 
 #define    TOOLBAR_HEIGHT 44.0
-#define    STATUSBAR_HEIGHT 20.0
 #define    LOCATIONBAR_HEIGHT 21.0
 #define    FOOTER_HEIGHT ((TOOLBAR_HEIGHT) + (LOCATIONBAR_HEIGHT))
 
 #pragma mark CDVWKInAppBrowser
 
-@interface CDVWKInAppBrowser () {
-    NSInteger _previousStatusBarStyle;
-}
+@interface CDVWKInAppBrowser () {}
 @end
 
 @implementation CDVWKInAppBrowser
@@ -58,7 +55,6 @@ static CDVWKInAppBrowser* instance = nil;
 - (void)pluginInitialize
 {
     instance = self;
-    _previousStatusBarStyle = -1;
     _callbackIdPattern = nil;
     _beforeload = @"";
     _waitForBeforeload = NO;
@@ -293,14 +289,6 @@ static CDVWKInAppBrowser* instance = nil;
         NSLog(@"Tried to show IAB after it was closed.");
         return;
     }
-    if (_previousStatusBarStyle != -1) {
-        NSLog(@"Tried to show IAB while already shown");
-        return;
-    }
-
-    if(!initHidden){
-        _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
-    }
 
     __block CDVInAppBrowserNavigationController* nav = [[CDVInAppBrowserNavigationController alloc]
                                                         initWithRootViewController:self.inAppBrowserViewController];
@@ -341,17 +329,10 @@ static CDVWKInAppBrowser* instance = nil;
 
 
     }
-    if (_previousStatusBarStyle == -1) {
-        NSLog(@"Tried to hide IAB while already hidden");
-        return;
-    }
-
-    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
 
     // Run later to avoid the "took a long time" log message.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.inAppBrowserViewController != nil) {
-            _previousStatusBarStyle = -1;
             [self.inAppBrowserViewController.presentingViewController dismissViewControllerAnimated:YES completion:nil];
         }
     });
@@ -690,15 +671,6 @@ static CDVWKInAppBrowser* instance = nil;
     // Set navigationDelegate to nil to ensure no callbacks are received from it.
     self.inAppBrowserViewController.navigationDelegate = nil;
     self.inAppBrowserViewController = nil;
-
-    if (IsAtLeastiOSVersion(@"7.0")) {
-        if (_previousStatusBarStyle != -1) {
-//             [[UIApplication sharedApplication] setStatusBarStyle:_previousStatusBarStyle];
-
-        }
-    }
-
-    _previousStatusBarStyle = -1; // this value was reset before reapplying it. caused statusbar to stay black on ios7
 }
 
 @end //CDVWKInAppBrowser
@@ -1050,13 +1022,8 @@ BOOL isExiting = FALSE;
     }
 }
 
-- (UIStatusBarStyle)preferredStatusBarStyle
-{
-    return UIStatusBarStyleDefault;
-}
-
 - (BOOL)prefersStatusBarHidden {
-    return NO;
+    return YES;
 }
 
 - (void)close
@@ -1108,8 +1075,7 @@ BOOL isExiting = FALSE;
     if (IsAtLeastiOSVersion(@"7.0") && !viewRenderedAtLeastOnce) {
         viewRenderedAtLeastOnce = TRUE;
         CGRect viewBounds = [self.webView bounds];
-        viewBounds.origin.y = STATUSBAR_HEIGHT;
-        viewBounds.size.height = viewBounds.size.height - STATUSBAR_HEIGHT;
+        viewBounds.size.height = viewBounds.size.height;
         self.webView.frame = viewBounds;
         [[UIApplication sharedApplication] setStatusBarHidden:YES];
     }
@@ -1118,21 +1084,10 @@ BOOL isExiting = FALSE;
     [super viewWillAppear:animated];
 }
 
-//
-// On iOS 7 the status bar is part of the view's dimensions, therefore it's height has to be taken into account.
-// The height of it could be hardcoded as 20 pixels, but that would assume that the upcoming releases of iOS won't
-// change that value.
-//
-- (float) getStatusBarOffset {
-    CGRect statusBarFrame = [[UIApplication sharedApplication] statusBarFrame];
-    float statusBarOffset = IsAtLeastiOSVersion(@"7.0") ? MIN(statusBarFrame.size.width, statusBarFrame.size.height) : 0.0;
-    return statusBarOffset;
-}
-
 - (void) rePositionViews {
     if ([_browserOptions.toolbarposition isEqualToString:kInAppBrowserToolbarBarPositionTop]) {
         [self.webView setFrame:CGRectMake(self.webView.frame.origin.x, TOOLBAR_HEIGHT, self.webView.frame.size.width, self.webView.frame.size.height)];
-        [self.toolbar setFrame:CGRectMake(self.toolbar.frame.origin.x, [self getStatusBarOffset], self.toolbar.frame.size.width, self.toolbar.frame.size.height)];
+        [self.toolbar setFrame:CGRectMake(self.toolbar.frame.origin.x, self.toolbar.frame.size.width, self.toolbar.frame.size.height)];
     }
 }
 

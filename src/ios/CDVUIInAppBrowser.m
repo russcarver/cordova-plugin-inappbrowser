@@ -29,16 +29,13 @@
 #define    kInAppBrowserToolbarBarPositionTop @"top"
 
 #define    TOOLBAR_HEIGHT 44.0
-#define    STATUSBAR_HEIGHT 20.0
 #define    LOCATIONBAR_HEIGHT 21.0
 #define    SAFE_AREA_INSERTS 20.0
 #define    FOOTER_HEIGHT ((TOOLBAR_HEIGHT) + (LOCATIONBAR_HEIGHT))
 
 #pragma mark CDVUIInAppBrowser
 
-@interface CDVUIInAppBrowser () {
-    NSInteger _previousStatusBarStyle;
-}
+@interface CDVUIInAppBrowser () {}
 @end
 
 @implementation CDVUIInAppBrowser
@@ -52,7 +49,6 @@ static CDVUIInAppBrowser* instance = nil;
 - (void)pluginInitialize
 {
     instance = self;
-    _previousStatusBarStyle = -1;
     _callbackIdPattern = nil;
     _beforeload = @"";
     _waitForBeforeload = NO;
@@ -240,13 +236,6 @@ static CDVUIInAppBrowser* instance = nil;
         NSLog(@"Tried to show IAB after it was closed.");
         return;
     }
-    if (_previousStatusBarStyle != -1) {
-        NSLog(@"Tried to show IAB while already shown");
-        return;
-    }
-
-    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
-
     __block CDVInAppBrowserNavigationController* nav = [[CDVInAppBrowserNavigationController alloc]
                                    initWithRootViewController:self.inAppBrowserViewController];
     nav.orientationDelegate = self.inAppBrowserViewController;
@@ -279,17 +268,10 @@ static CDVUIInAppBrowser* instance = nil;
 
 
     }
-    if (_previousStatusBarStyle == -1) {
-        NSLog(@"Tried to hide IAB while already hidden");
-        return;
-    }
-
-    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
 
     // Run later to avoid the "took a long time" log message.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.inAppBrowserViewController != nil) {
-            _previousStatusBarStyle = -1;
             [self.inAppBrowserViewController.presentingViewController dismissViewControllerAnimated:YES completion:^{
                 [[[[UIApplication sharedApplication] delegate] window] makeKeyAndVisible];
           }];
@@ -603,14 +585,6 @@ static CDVUIInAppBrowser* instance = nil;
     // Don't recycle the ViewController since it may be consuming a lot of memory.
     // Also - this is required for the PDF/User-Agent bug work-around.
     self.inAppBrowserViewController = nil;
-
-    if (IsAtLeastiOSVersion(@"7.0")) {
-        if (_previousStatusBarStyle != -1) {
-//             [[UIApplication sharedApplication] setStatusBarStyle:_previousStatusBarStyle];
-        }
-    }
-
-    _previousStatusBarStyle = -1; // this value was reset before reapplying it. caused statusbar to stay black on ios7
 }
 
 @end
@@ -937,11 +911,6 @@ static CDVUIInAppBrowser* instance = nil;
     [super viewDidUnload];
 }
 
-- (UIStatusBarStyle)preferredStatusBarStyle
-{
-    return UIStatusBarStyleDefault;
-}
-
 - (BOOL)prefersStatusBarHidden {
     return NO;
 }
@@ -1007,21 +976,10 @@ static CDVUIInAppBrowser* instance = nil;
     [super viewWillAppear:animated];
 }
 
-//
-// On iOS 7 the status bar is part of the view's dimensions, therefore it's height has to be taken into account.
-// The height of it could be hardcoded as 20 pixels, but that would assume that the upcoming releases of iOS won't
-// change that value.
-//
-- (float) getStatusBarOffset {
-    CGRect statusBarFrame = [[UIApplication sharedApplication] statusBarFrame];
-    float statusBarOffset = IsAtLeastiOSVersion(@"7.0") ? MIN(statusBarFrame.size.width, statusBarFrame.size.height) : 0.0;
-    return statusBarOffset;
-}
-
 - (void) rePositionViews {
     if ([_browserOptions.toolbarposition isEqualToString:kInAppBrowserToolbarBarPositionTop]) {
         [self.webView setFrame:CGRectMake(self.webView.frame.origin.x, TOOLBAR_HEIGHT, self.webView.frame.size.width, self.webView.frame.size.height)];
-        [self.toolbar setFrame:CGRectMake(self.toolbar.frame.origin.x, [self getStatusBarOffset], self.toolbar.frame.size.width, self.toolbar.frame.size.height)];
+        [self.toolbar setFrame:CGRectMake(self.toolbar.frame.origin.x, self.toolbar.frame.size.width, self.toolbar.frame.size.height)];
     }
 }
 
