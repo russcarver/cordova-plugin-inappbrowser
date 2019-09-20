@@ -1111,7 +1111,7 @@ BOOL isExiting = FALSE;
         viewBounds.origin.y = STATUSBAR_HEIGHT;
         viewBounds.size.height = viewBounds.size.height - STATUSBAR_HEIGHT;
         self.webView.frame = viewBounds;
-        [[UIApplication sharedApplication] setStatusBarStyle:[setStatusBarHidden:YES]];
+        [[UIApplication sharedApplication] setStatusBarHidden:YES];
     }
     [self rePositionViews];
 
