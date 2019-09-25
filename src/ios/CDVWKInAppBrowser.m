@@ -42,7 +42,9 @@
 
 #pragma mark CDVWKInAppBrowser
 
-@interface CDVWKInAppBrowser () {}
+@interface CDVWKInAppBrowser () {
+    NSInteger _previousStatusBarStyle;
+}
 @end
 
 @implementation CDVWKInAppBrowser
@@ -56,6 +58,7 @@ static CDVWKInAppBrowser* instance = nil;
 - (void)pluginInitialize
 {
     instance = self;
+    _previousStatusBarStyle = -1;
     _callbackIdPattern = nil;
     _beforeload = @"";
     _waitForBeforeload = NO;
@@ -225,8 +228,7 @@ static CDVWKInAppBrowser* instance = nil;
     [self.inAppBrowserViewController showLocationBar:browserOptions.location];
     [self.inAppBrowserViewController showToolBar:browserOptions.toolbar :browserOptions.toolbarposition];
     if (browserOptions.closebuttoncaption != nil || browserOptions.closebuttoncolor != nil) {
-        int closeButtonIndex = browserOptions.lefttoright ? (browserOptions.hidenavigationbuttons ? 1 : 4) : 0;
-        [self.inAppBrowserViewController setCloseButtonTitle:browserOptions.closebuttoncaption :browserOptions.closebuttoncolor :closeButtonIndex];
+        [self.inAppBrowserViewController setCloseButtonTitle:browserOptions.closebuttoncaption :browserOptions.closebuttoncolor];
     }
     // Set Presentation Style
     UIModalPresentationStyle presentationStyle = UIModalPresentationFullScreen; // default
@@ -290,6 +292,14 @@ static CDVWKInAppBrowser* instance = nil;
         NSLog(@"Tried to show IAB after it was closed.");
         return;
     }
+    if (_previousStatusBarStyle != -1) {
+        NSLog(@"Tried to show IAB while already shown");
+        return;
+    }
+
+    if(!initHidden){
+        _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
+    }
 
     __block CDVInAppBrowserNavigationController* nav = [[CDVInAppBrowserNavigationController alloc]
                                                         initWithRootViewController:self.inAppBrowserViewController];
@@ -330,10 +340,17 @@ static CDVWKInAppBrowser* instance = nil;
 
 
     }
+    if (_previousStatusBarStyle == -1) {
+        NSLog(@"Tried to hide IAB while already hidden");
+        return;
+    }
+
+    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
 
     // Run later to avoid the "took a long time" log message.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.inAppBrowserViewController != nil) {
+            _previousStatusBarStyle = -1;
             [self.inAppBrowserViewController.presentingViewController dismissViewControllerAnimated:YES completion:nil];
         }
     });
@@ -672,6 +689,15 @@ static CDVWKInAppBrowser* instance = nil;
     // Set navigationDelegate to nil to ensure no callbacks are received from it.
     self.inAppBrowserViewController.navigationDelegate = nil;
     self.inAppBrowserViewController = nil;
+
+    if (IsAtLeastiOSVersion(@"7.0")) {
+        if (_previousStatusBarStyle != -1) {
+            [[UIApplication sharedApplication] setStatusBarStyle:_previousStatusBarStyle];
+
+        }
+    }
+
+    _previousStatusBarStyle = -1; // this value was reset before reapplying it. caused statusbar to stay black on ios7
 }
 
 @end //CDVWKInAppBrowser
@@ -858,15 +884,9 @@ BOOL isExiting = FALSE;
 
     // Filter out Navigation Buttons if user requests so
     if (_browserOptions.hidenavigationbuttons) {
-        if (_browserOptions.lefttoright) {
-            [self.toolbar setItems:@[flexibleSpaceButton, self.closeButton]];
-        } else {
-            [self.toolbar setItems:@[self.closeButton, flexibleSpaceButton]];
-        }
-    } else if (_browserOptions.lefttoright) {
-        [self.toolbar setItems:@[self.backButton, fixedSpaceButton, self.forwardButton, flexibleSpaceButton, self.closeButton]];
+      [self.toolbar setItems:@[self.closeButton, flexibleSpaceButton]];
     } else {
-        [self.toolbar setItems:@[self.closeButton, flexibleSpaceButton, self.backButton, fixedSpaceButton, self.forwardButton]];
+      [self.toolbar setItems:@[self.closeButton, flexibleSpaceButton, self.backButton, fixedSpaceButton, self.forwardButton]];
     }
 
     self.view.backgroundColor = [UIColor grayColor];
@@ -880,7 +900,7 @@ BOOL isExiting = FALSE;
     [self.webView setFrame:frame];
 }
 
-- (void)setCloseButtonTitle:(NSString*)title : (NSString*) colorString : (int) buttonIndex
+- (void)setCloseButtonTitle:(NSString*)title : (NSString*) colorString
 {
     // the advantage of using UIBarButtonSystemItemDone is the system will localize it for you automatically
     // but, if you want to set this yourself, knock yourself out (we can't set the title for a system Done button, so we have to create a new one)
@@ -892,7 +912,7 @@ BOOL isExiting = FALSE;
     self.closeButton.tintColor = colorString != nil ? [self colorFromHexString:colorString] : [UIColor colorWithRed:60.0 / 255.0 green:136.0 / 255.0 blue:230.0 / 255.0 alpha:1];
 
     NSMutableArray* items = [self.toolbar.items mutableCopy];
-    [items replaceObjectAtIndex:buttonIndex withObject:self.closeButton];
+    [items replaceObjectAtIndex:0 withObject:self.closeButton];
     [self.toolbar setItems:items];
 }
 
@@ -1084,6 +1104,7 @@ BOOL isExiting = FALSE;
         viewBounds.origin.y = STATUSBAR_HEIGHT;
         viewBounds.size.height = viewBounds.size.height - STATUSBAR_HEIGHT;
         self.webView.frame = viewBounds;
+//         [[UIApplication sharedApplication] setStatusBarStyle:[self preferredStatusBarStyle]];
         [[UIApplication sharedApplication] setStatusBarHidden:YES];
     }
     [self rePositionViews];
@@ -1097,7 +1118,9 @@ BOOL isExiting = FALSE;
 // change that value.
 //
 - (float) getStatusBarOffset {
-    return 0.0;
+    CGRect statusBarFrame = [[UIApplication sharedApplication] statusBarFrame];
+    float statusBarOffset = IsAtLeastiOSVersion(@"7.0") ? MIN(statusBarFrame.size.width, statusBarFrame.size.height) : 0.0;
+    return statusBarOffset;
 }
 
 - (void) rePositionViews {
