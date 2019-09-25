@@ -19,7 +19,7 @@
 
 #import "CDVInAppBrowserNavigationController.h"
 
-#define    STATUSBAR_HEIGHT 20.0
+#define    STATUSBAR_HEIGHT 0.0
 
 @implementation CDVInAppBrowserNavigationController : UINavigationController
 
@@ -29,19 +29,19 @@
     }
 }
 
-- (void) viewDidLoad {
-
-    CGRect statusBarFrame = [self invertFrameIfNeeded:[UIApplication sharedApplication].statusBarFrame];
-    statusBarFrame.size.height = STATUSBAR_HEIGHT;
-    // simplified from: http://stackoverflow.com/a/25669695/219684
-
-    UIToolbar* bgToolbar = [[UIToolbar alloc] initWithFrame:statusBarFrame];
-    bgToolbar.barStyle = UIBarStyleDefault;
-    [bgToolbar setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
-    [self.view addSubview:bgToolbar];
-
-    [super viewDidLoad];
-}
+// - (void) viewDidLoad {
+//
+//     CGRect statusBarFrame = [self invertFrameIfNeeded:[UIApplication sharedApplication].statusBarFrame];
+//     statusBarFrame.size.height = STATUSBAR_HEIGHT;
+//     // simplified from: http://stackoverflow.com/a/25669695/219684
+//
+//     UIToolbar* bgToolbar = [[UIToolbar alloc] initWithFrame:statusBarFrame];
+//     bgToolbar.barStyle = UIBarStyleDefault;
+//     [bgToolbar setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
+//     [self.view addSubview:bgToolbar];
+//
+//     [super viewDidLoad];
+// }
 
 - (CGRect) invertFrameIfNeeded:(CGRect)rect {
     if (UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation])) {
